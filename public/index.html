@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SRT Maker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<h1>SRT Maker</h1>
+<p class="sub">Voiceover (ya audio) daalein, captions.srt download karein (15 minute tak). Koi key ya login nahi chahiye.</p>
+
+<section>
+<h2>Audio</h2>
+<label for="mAudio">Voiceover file (mp3/wav/m4a)</label>
+<input type="file" id="mAudio" accept="audio/*,video/*">
+</section>
+
+<section>
+<h2>Caption settings</h2>
+<div class="row">
+ <div><label for="lang">Language</label>
+  <select id="lang"><option value="">Auto detect</option><option value="english">English</option><option value="hindi">Hindi</option><option value="urdu">Urdu</option></select></div>
+ <div><label for="model">Speed</label>
+  <select id="model"><option value="onnx-community/whisper-tiny">Sab se tez (tiny)</option><option value="onnx-community/whisper-base" selected>Balanced (base)</option><option value="onnx-community/whisper-small">Behtar spelling (small, dheema)</option></select></div>
+ <div><label for="wpl">Words per line: <span id="wplV">4</span></label><input type="range" id="wpl" min="1" max="8" step="1" value="4"></div>
+</div>
+</section>
+
+<button id="go">Create captions</button>
+<div id="status" role="status"></div>
+<div id="out" hidden>
+ <a class="dl" id="dlSrt" download="captions.srt">Download captions.srt</a>
+ <pre id="srtView"></pre>
+</div>
+</main>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const status = (m, err) => { $("status").textContent = m; $("status").className = err ? "err" : ""; };
+$("wpl").oninput = () => ($("wplV").textContent = $("wpl").value);
+
+const srtTime = (t) => { const ms = Math.round(t * 1000); const p = (n, l = 2) => String(n).padStart(l, "0");
+  return `${p(Math.floor(ms/3600000))}:${p(Math.floor(ms/60000)%60)}:${p(Math.floor(ms/1000)%60)},${p(ms%1000,3)}`; };
+
+// Audio is decoded here, then Whisper runs in worker.js (GPU if the browser has WebGPU)
+const worker = new Worker("worker.js", { type: "module" });
+
+async function decode(file) {
+  try { return (await new AudioContext({ sampleRate: 16000 }).decodeAudioData(await file.arrayBuffer())).getChannelData(0); }
+  catch { throw new Error("Ye file khul nahi saki. mp3 ya wav file try karein."); }
+}
+
+function transcribe(audio, model, language) {
+  return new Promise((resolve, reject) => {
+    const t0 = Date.now(); let timer, mode = "";
+    const tick = () => status(`Captions ban rahe hain${mode} - ${Math.round((Date.now() - t0) / 1000)} second`);
+    worker.onmessage = ({ data }) => {
+      if (data.type === "load") status(`AI model download ho raha hai: ${data.pct}% (sirf pehli dafa)`);
+      if (data.type === "run") { mode = data.gpu ? " (GPU, tez)" : " (CPU)"; tick(); timer = setInterval(tick, 1000); }
+      if (data.type === "done") { clearInterval(timer); resolve(data.chunks); }
+      if (data.type === "error") { clearInterval(timer); reject(new Error(data.message)); }
+    };
+    worker.postMessage({ audio, model, language }, [audio.buffer]);
+  });
+}
+
+function toSrt(chunks, perLine) {
+  const words = chunks.filter((w) => w.timestamp[0] != null && w.text.trim());
+  if (!words.length) throw new Error("Audio mein speech nahi mili.");
+  let srt = "", n = 1;
+  for (let i = 0; i < words.length; i += perLine) {
+    const g = words.slice(i, i + perLine), next = words[i + perLine];
+    const start = g[0].timestamp[0];
+    let end = g[g.length - 1].timestamp[1] ?? next?.timestamp[0] ?? start + 1;
+    if (end <= start) end = start + 0.5;
+    srt += `${n++}\n${srtTime(start)} --> ${srtTime(end)}\n${g.map((w) => w.text.trim()).join(" ")}\n\n`;
+  }
+  return srt;
+}
+
+$("go").onclick = async () => {
+  $("go").disabled = true; $("out").hidden = true;
+  try {
+    const file = $("mAudio").files[0];
+    if (!file) throw new Error("Pehle audio file chunein.");
+    status("Audio kholi ja rahi hai...");
+    const audio = await decode(file);
+    const minutes = audio.length / 16000 / 60;
+    if (minutes > 15) throw new Error(`Ye audio ${minutes.toFixed(1)} minute ki hai. 15 minute se choti audio chunein, ya isay hisson mein kaat lein.`);
+    const srt = toSrt(await transcribe(audio, $("model").value, $("lang").value), +$("wpl").value);
+    $("dlSrt").href = URL.createObjectURL(new Blob([srt], { type: "text/plain" }));
+    $("srtView").textContent = srt; $("out").hidden = false; status("Tayyar hai.");
+  } catch (e) { status(e.message, true); }
+  $("go").disabled = false;
+};
+</script>
+</body>
+</html>

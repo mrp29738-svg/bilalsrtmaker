@@ -1,0 +1,28 @@
+:root{--bg:#f3f5f2;--ink:#17201b;--mut:#5d6b63;--card:#fff;--acc:#0b6b4f;--line:#d5ddd8;--err:#b3261e}
+@media(prefers-color-scheme:dark){:root{--bg:#101613;--ink:#e8efea;--mut:#9aaaa0;--card:#18211c;--acc:#4fc79a;--line:#2b3a32;--err:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif}
+main{max-width:680px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:2rem;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 24px}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+h2{font-size:1.05rem;margin:0 0 10px}
+label{display:block;font:600 .9rem system-ui,sans-serif;margin:10px 0 4px}
+input,textarea,select,button{font-family:system-ui,sans-serif;font-size:1rem}
+input[type=text],textarea,select{width:100%;padding:9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+textarea{min-height:160px}
+input[type=range]{width:100%}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1;min-width:180px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-weight:400;margin-top:10px}
+button,a.btn{display:inline-block;background:var(--acc);color:#fff;border:0;border-radius:6px;padding:11px 18px;font-weight:600;cursor:pointer;text-decoration:none}
+@media(prefers-color-scheme:dark){button,a.btn{color:#0b1410}}
+button:disabled{opacity:.5;cursor:wait}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+#status{font:.95rem system-ui,sans-serif;margin:10px 0}
+#status.err,.over{color:var(--err);font-weight:600}
+.count{font:.85rem system-ui,sans-serif;color:var(--mut);text-align:right}
+audio{width:100%;margin-top:8px}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:240px;overflow:auto;white-space:pre-wrap;font-size:.85rem}
+a.dl{display:inline-block;margin:10px 16px 0 0;color:var(--acc);font:600 .95rem system-ui,sans-serif}
+.step{display:flex;gap:14px;margin-bottom:18px;font:.95rem system-ui,sans-serif}
+.step a{color:var(--acc)}
